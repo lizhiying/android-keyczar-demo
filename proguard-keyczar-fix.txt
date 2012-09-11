@@ -1,0 +1,10 @@
+-dontwarn com.android.vending.**
+-dontwarn com.google.vending.**
+-dontwarn javax.naming.**
+
+-keep public class org.spongycastle.jcajce.provider.symmetric.AES*
+
+-keep public class org.spongycastle.jcajce.provider.symmetric.AES {
+    public protected <fields>;
+    public protected <methods>;
+}
