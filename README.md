@@ -17,9 +17,8 @@ Using Keyczar on pre-ICS devices
 This version also works around a bug present in Android versions before
 ICS which causes problems with use of Keyczar.
 
-For pre-ICS phones, you must include [Spongycastle] (it will also work
-with Bouncycastle with a few tweaks). You also have to include the
-`FixBrokenCipherSpiProvider` class in your project.
+For pre-ICS phones, you must include the `FixBrokenCipherSpiProvider`
+class in your project.
 
 In every class where you want to use Keyczar, you must insert this code
 snippet:
@@ -34,4 +33,3 @@ This sprang from [my talk on Android and security][IOTalk] during Google
 I/O 2012.
 
   [IOTalk]: http://youtu.be/RPJENzweI-A?t=32m41s
-  [Spongycastle]: http://rtyley.github.com/spongycastle/

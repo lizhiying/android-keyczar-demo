@@ -16,10 +16,23 @@
 
 package com.example.android.keyczardemo;
 
+import java.security.AlgorithmParameters;
+import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.security.SecureRandom;
 import java.security.Security;
+import java.security.spec.AlgorithmParameterSpec;
 
-import org.spongycastle.jcajce.provider.symmetric.AES;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.CipherSpi;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.ShortBufferException;
 
 import android.os.Build;
 
@@ -46,16 +59,140 @@ public class FixBrokenCipherSpiProvider extends Provider {
         super("FixBrokenCipherSpiProvider", 1.0, "Workaround for bug in pre-ICS Harmony");
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            put("Cipher.AES", FixBrokenCipherSpiAESECB.class.getName());
+            put("Cipher.AES", FixBrokenCipherSpi.AES.class.getName());
             Security.insertProviderAt(this, 1);
         }
     }
 
-    public static class FixBrokenCipherSpiAESECB extends AES.ECB {
+    /**
+     * Proxies a real Cipher provider to work around a bug in pre-ICS Harmony
+     * that an {@code update()} would return {@code null}.
+     */
+    public static class FixBrokenCipherSpi extends CipherSpi {
+        public static class AES extends FixBrokenCipherSpi {
+            public AES() {
+                super("AES");
+            }
+        }
+
+        /** Cipher algorithm. */
+        private String mAlgorithm;
+
+        /** Cipher mode. */
+        private String mMode;
+
+        /** Cipher padding. */
+        private String mPadding;
+
+        /** The real cipher we're proxying. */
+        private Cipher mInstance;
+
+        public FixBrokenCipherSpi(String algorithm) {
+            mAlgorithm = algorithm;
+        }
+
+        private Cipher getInstance() {
+            if (mInstance != null) {
+                return mInstance;
+            }
+
+            String fullName = "Cipher." + mAlgorithm;
+            if (mMode != null && mPadding != null) {
+                fullName += "/" + mMode + "/" + mPadding;
+            }
+
+            final Provider[] providers = Security.getProviders(fullName);
+            for (Provider provider : providers) {
+                if (provider instanceof FixBrokenCipherSpiProvider) {
+                    continue;
+                }
+
+                try {
+                    final Cipher instance = Cipher.getInstance(fullName, provider);
+                    mInstance = instance;
+                    return instance;
+                } catch (GeneralSecurityException ignored) {
+                    /*
+                     * This shouldn't happen, but loop to find the next provider
+                     * if it does.
+                     */
+                }
+            }
+
+            throw new RuntimeException("No other providers offer " + fullName);
+        }
+
+        @Override
+        protected void engineSetMode(String mode) throws NoSuchAlgorithmException {
+            mMode = mode;
+        }
+
+        @Override
+        protected void engineSetPadding(String padding) throws NoSuchPaddingException {
+            mPadding = padding;
+        }
+
+        @Override
+        protected void engineInit(int opmode, Key key, SecureRandom random)
+                throws InvalidKeyException {
+            getInstance().init(opmode, key, random);
+        }
+
+        @Override
+        protected void engineInit(int opmode, Key key, AlgorithmParameterSpec params,
+                SecureRandom random) throws InvalidKeyException, InvalidAlgorithmParameterException {
+            getInstance().init(opmode, key, params, random);
+        }
+
+        @Override
+        protected void engineInit(int opmode, Key key, AlgorithmParameters params,
+                SecureRandom random) throws InvalidKeyException, InvalidAlgorithmParameterException {
+            getInstance().init(opmode, key, params, random);
+        }
+
+        @Override
+        protected AlgorithmParameters engineGetParameters() {
+            return getInstance().getParameters();
+        }
+
+        @Override
+        protected byte[] engineGetIV() {
+            return getInstance().getIV();
+        }
+
+        @Override
+        protected int engineGetBlockSize() {
+            return getInstance().getBlockSize();
+        }
+
+        @Override
+        protected int engineGetOutputSize(int inputLen) {
+            return getInstance().getOutputSize(inputLen);
+        }
+
         @Override
         protected byte[] engineUpdate(byte[] input, int offset, int len) {
-            final byte[] result = super.engineUpdate(input, offset, len);
+            final byte[] result = getInstance().update(input, offset, len);
             return result == null ? EMPTY_BYTE_ARRAY : result;
+        }
+
+        @Override
+        protected int engineUpdate(byte[] input, int inputOffset, int inputLen, byte[] output,
+                int outputOffset) throws ShortBufferException {
+            return getInstance().update(input, inputOffset, inputLen, output, outputOffset);
+        }
+
+        @Override
+        protected byte[] engineDoFinal(byte[] input, int inputOffset, int inputLen)
+                throws IllegalBlockSizeException, BadPaddingException {
+            return getInstance().doFinal(input, inputOffset, inputLen);
+        }
+
+        @Override
+        protected int engineDoFinal(byte[] input, int inputOffset, int inputLen, byte[] output,
+                int outputOffset) throws ShortBufferException, IllegalBlockSizeException,
+                BadPaddingException {
+            return getInstance().doFinal(input, inputOffset, inputLen, output, outputOffset);
         }
     }
 }
