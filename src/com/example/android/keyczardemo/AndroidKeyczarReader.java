@@ -19,6 +19,7 @@ package com.example.android.keyczardemo;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
 import org.keyczar.KeyMetadata;
@@ -83,13 +84,14 @@ public class AndroidKeyczarReader implements KeyczarReader {
 
     private String getFileContentAsString(String filename) throws KeyczarException {
         try {
-            final byte[] buf = new byte[1024];
+            final char[] buf = new char[1024];
             final StringBuilder sb = new StringBuilder();
             final InputStream is = mAssetManager.open(getFullFilename(filename));
+            final InputStreamReader isr = new InputStreamReader(is, CHARSET_UTF8);
 
             int numRead;
-            while ((numRead = is.read(buf)) > 0) {
-                sb.append(new String(buf, 0, numRead, CHARSET_UTF8));
+            while ((numRead = isr.read(buf)) > 0) {
+                sb.append(buf, 0, numRead);
             }
             return sb.toString();
         } catch (IOException e) {
