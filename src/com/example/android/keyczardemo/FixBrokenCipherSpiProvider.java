@@ -96,19 +96,22 @@ public class FixBrokenCipherSpiProvider extends Provider {
                 return mInstance;
             }
 
-            String fullName = "Cipher." + mAlgorithm;
+            final String cipherAlg = "Cipher." + mAlgorithm;
+            final String fullCipher;
             if (mMode != null && mPadding != null) {
-                fullName += "/" + mMode + "/" + mPadding;
+                fullCipher = mAlgorithm + "/" + mMode + "/" + mPadding;
+            } else {
+                fullCipher = mAlgorithm;
             }
 
-            final Provider[] providers = Security.getProviders(fullName);
+            final Provider[] providers = Security.getProviders(cipherAlg);
             for (Provider provider : providers) {
                 if (provider instanceof FixBrokenCipherSpiProvider) {
                     continue;
                 }
 
                 try {
-                    final Cipher instance = Cipher.getInstance(fullName, provider);
+                    final Cipher instance = Cipher.getInstance(fullCipher, provider);
                     mInstance = instance;
                     return instance;
                 } catch (GeneralSecurityException ignored) {
@@ -119,7 +122,7 @@ public class FixBrokenCipherSpiProvider extends Provider {
                 }
             }
 
-            throw new RuntimeException("No other providers offer " + fullName);
+            throw new RuntimeException("No other providers offer " + fullCipher);
         }
 
         @Override
