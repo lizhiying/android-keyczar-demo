@@ -188,14 +188,16 @@ public class FixBrokenCipherSpiProvider extends Provider {
         @Override
         protected byte[] engineDoFinal(byte[] input, int inputOffset, int inputLen)
                 throws IllegalBlockSizeException, BadPaddingException {
-            return getInstance().doFinal(input, inputOffset, inputLen);
+            return getInstance().doFinal(input == null ? EMPTY_BYTE_ARRAY : input, inputOffset,
+                    inputLen);
         }
 
         @Override
         protected int engineDoFinal(byte[] input, int inputOffset, int inputLen, byte[] output,
                 int outputOffset) throws ShortBufferException, IllegalBlockSizeException,
                 BadPaddingException {
-            return getInstance().doFinal(input, inputOffset, inputLen, output, outputOffset);
+            return getInstance().doFinal(input == null ? EMPTY_BYTE_ARRAY : input, inputOffset,
+                    inputLen, output, outputOffset);
         }
     }
 }
